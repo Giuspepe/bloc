@@ -17,13 +17,12 @@ class SimpleBlocObserver extends BlocObserver {
 
   @override
   void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
-    print(error);
+    print("SimpleBlocObserver.onError got the following error: $error");
     super.onError(bloc, error, stackTrace);
   }
 }
 
 void main() {
-  Bloc.observer = SimpleBlocObserver();
   runApp(App());
 }
 
@@ -32,6 +31,10 @@ void main() {
 /// * [flutter_bloc](https://pub.dev/packages/flutter_bloc)
 /// to manage the state of a counter.
 class App extends StatelessWidget {
+  App() {
+    Bloc.observer = SimpleBlocObserver();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -61,7 +64,12 @@ class CounterPage extends StatelessWidget {
       body: Center(
         child: BlocBuilder<CounterBloc, int>(
           builder: (context, count) {
-            return Text('$count', style: Theme.of(context).textTheme.headline1);
+            return Center(
+              child: Column(children: [
+                const CircularProgressIndicator(),
+                Text('$count', style: Theme.of(context).textTheme.headline1)
+              ]),
+            );
           },
         ),
       ),
@@ -69,6 +77,22 @@ class CounterPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.end,
         children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0),
+            child: FloatingActionButton(
+              child: const Icon(Icons.flash_on),
+              onPressed: () =>
+                  throw Exception("exception thrown but not inside of bloc"),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0),
+            child: FloatingActionButton(
+              child: const Icon(Icons.bug_report),
+              onPressed: () =>
+                  context.read<CounterBloc>().add(ThrowExceptionInBloc()),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 5.0),
             child: FloatingActionButton(
@@ -105,6 +129,8 @@ class Increment extends CounterEvent {}
 /// Notifies bloc to decrement state.
 class Decrement extends CounterEvent {}
 
+class ThrowExceptionInBloc extends CounterEvent {}
+
 /// {@template counter_bloc}
 /// A simple [Bloc] which manages an `int` as its state.
 /// {@endtemplate}
@@ -113,6 +139,7 @@ class CounterBloc extends Bloc<CounterEvent, int> {
   CounterBloc() : super(0) {
     on<Increment>((event, emit) => emit(state + 1));
     on<Decrement>((event, emit) => emit(state - 1));
+    on<ThrowExceptionInBloc>((event, emit) => throw event);
   }
 }
 
