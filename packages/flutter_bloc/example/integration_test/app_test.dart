@@ -39,6 +39,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    /// onPressed of the button adds an event to bloc to which the bloc reacts by throwing an exception
     await tester.tap(find.byIcon(Icons.bug_report));
     await tester.pump();
 
