@@ -1,26 +1,10 @@
 import 'package:example/main.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-
-  testWidgets('Should pass', (WidgetTester tester) async {
-    await tester.pumpWidget(App());
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.text('0'), findsOneWidget);
-
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    expect(find.text('1'), findsOneWidget);
-
-    setUpHotReload();
-  });
 
   testWidgets('Should fail and does', (WidgetTester tester) async {
     await tester.pumpWidget(App());
@@ -28,8 +12,21 @@ void main() {
     await tester.pump();
 
     /// onPressed of the button throws an exception
-    await tester.tap(find.byIcon(Icons.flash_on));
+    await tester.tap(
+        find.text('Throw exception in onPressed of button (not inside bloc)'));
     await tester.pump();
+
+    setUpHotReload();
+  });
+
+  testWidgets('Should succeed', (WidgetTester tester) async {
+    await tester.pumpWidget(App());
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Load data and succeed (no exception thrown)'));
+    await tester.pumpAndSettle();
+    expect(find.byType(StaticSuccessWidget), findsOneWidget);
 
     setUpHotReload();
   });
@@ -39,9 +36,10 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    /// onPressed of the button adds an event to bloc to which the bloc reacts by throwing an exception
-    await tester.tap(find.byIcon(Icons.bug_report));
-    await tester.pump();
+    await tester
+        .tap(find.text('Load data and fail (exception thrown in bloc)'));
+    await tester.pumpAndSettle();
+    expect(find.byType(StaticSuccessWidget), findsOneWidget);
 
     setUpHotReload();
   });

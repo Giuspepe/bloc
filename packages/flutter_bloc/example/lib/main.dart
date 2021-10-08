@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs, lines_longer_than_80_chars
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -17,7 +19,7 @@ class SimpleBlocObserver extends BlocObserver {
 
   @override
   void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
-    print("SimpleBlocObserver.onError got the following error: $error");
+    print('SimpleBlocObserver.onError got the following error: $error');
     super.onError(bloc, error, stackTrace);
   }
 }
@@ -37,135 +39,191 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => ThemeCubit(),
-      child: BlocBuilder<ThemeCubit, ThemeData>(
-        builder: (_, theme) {
-          return MaterialApp(
-            theme: theme,
-            home: BlocProvider(
-              create: (_) => CounterBloc(),
-              child: CounterPage(),
-            ),
-          );
-        },
+    return MaterialApp(
+      home: BlocProvider(
+        create: (_) => ExampleBloc(),
+        child: CounterPage(),
       ),
     );
   }
 }
 
 /// A [StatelessWidget] which demonstrates
-/// how to consume and interact with a [CounterBloc].
+/// how to consume and interact with a [ExampleBloc].
 class CounterPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Counter')),
       body: Center(
-        child: BlocBuilder<CounterBloc, int>(
-          builder: (context, count) {
+        child: BlocBuilder<ExampleBloc, ExampleState>(
+          builder: (context, state) {
             return Center(
               child: Column(children: [
-                const CircularProgressIndicator(),
-                Text('$count', style: Theme.of(context).textTheme.headline1)
+                TextButton(
+                    onPressed: () => throw Exception(
+                        'Exception directly from TextButton.onPressed'),
+                    child: const Text(
+                        'Throw exception in onPressed of button (not inside bloc)')),
+                TextButton(
+                  onPressed: () => BlocProvider.of<ExampleBloc>(context)
+                      .add(LoadDataEvent(shouldFail: false)),
+                  child:
+                      const Text('Load data and succeed (no exception thrown)'),
+                ),
+                TextButton(
+                  onPressed: () => BlocProvider.of<ExampleBloc>(context)
+                      .add(LoadDataEvent(shouldFail: true)),
+                  child: const Text(
+                      'Load data and fail (exception thrown in bloc)'),
+                ),
+                const Text('--------------'),
+                Text('State: $state \nDescription: ${state.description}'),
+                if (state is LoadInProgressState)
+                  const AnimatedLoadingWidget()
+                else if (state is LoadSuccessState)
+                  const StaticSuccessWidget()
+                else if (state is LoadFailureState)
+                  const AnimatedFailureWidget()
               ]),
             );
           },
         ),
       ),
-      floatingActionButton: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0),
-            child: FloatingActionButton(
-              child: const Icon(Icons.flash_on),
-              onPressed: () =>
-                  throw Exception("exception thrown but not inside of bloc"),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0),
-            child: FloatingActionButton(
-              child: const Icon(Icons.bug_report),
-              onPressed: () =>
-                  context.read<CounterBloc>().add(ThrowExceptionInBloc()),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0),
-            child: FloatingActionButton(
-              child: const Icon(Icons.add),
-              onPressed: () => context.read<CounterBloc>().add(Increment()),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0),
-            child: FloatingActionButton(
-              child: const Icon(Icons.remove),
-              onPressed: () => context.read<CounterBloc>().add(Decrement()),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0),
-            child: FloatingActionButton(
-              child: const Icon(Icons.brightness_6),
-              onPressed: () => context.read<ThemeCubit>().toggleTheme(),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
 
-/// Event being processed by [CounterBloc].
-abstract class CounterEvent {}
+abstract class ExampleEvent {}
 
-/// Notifies bloc to increment state.
-class Increment extends CounterEvent {}
+class LoadDataEvent extends ExampleEvent {
+  LoadDataEvent({required this.shouldFail});
 
-/// Notifies bloc to decrement state.
-class Decrement extends CounterEvent {}
+  final bool shouldFail;
+}
 
-class ThrowExceptionInBloc extends CounterEvent {}
-
-/// {@template counter_bloc}
-/// A simple [Bloc] which manages an `int` as its state.
-/// {@endtemplate}
-class CounterBloc extends Bloc<CounterEvent, int> {
-  /// {@macro counter_bloc}
-  CounterBloc() : super(0) {
-    on<Increment>((event, emit) => emit(state + 1));
-    on<Decrement>((event, emit) => emit(state - 1));
-    on<ThrowExceptionInBloc>((event, emit) => throw event);
+class ExampleBloc extends Bloc<ExampleEvent, ExampleState> {
+  ExampleBloc() : super(const InitialState()) {
+    on<LoadDataEvent>(onLoadData);
   }
 }
 
-/// {@template brightness_cubit}
-/// A simple [Cubit] which manages the [ThemeData] as its state.
-/// {@endtemplate}
-class ThemeCubit extends Cubit<ThemeData> {
-  /// {@macro brightness_cubit}
-  ThemeCubit() : super(_lightTheme);
+Future<void> onLoadData(
+  LoadDataEvent event,
+  Emitter<ExampleState> emit,
+) async {
+  emit(const LoadInProgressState());
+  await Future<void>.delayed(const Duration(seconds: 3));
 
-  static final _lightTheme = ThemeData(
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      foregroundColor: Colors.white,
-    ),
-    brightness: Brightness.light,
+  late final String data;
+
+  try {
+    data = loadData(event.shouldFail);
+  } catch (error) {
+    emit(LoadFailureState(error));
+    rethrow;
+  }
+
+  emit(LoadSuccessState(data));
+}
+
+String loadData(bool shouldFail) {
+  if (shouldFail) {
+    throw Exception('An exception was thrown when trying to load data');
+  }
+
+  return 'foo bar 42';
+}
+
+abstract class ExampleState {
+  const ExampleState(this.description);
+
+  final String description;
+}
+
+class InitialState extends ExampleState {
+  const InitialState() : super('Initial state');
+}
+
+class LoadInProgressState extends ExampleState {
+  const LoadInProgressState() : super('Load in progress ...');
+}
+
+class LoadSuccessState extends ExampleState {
+  const LoadSuccessState(this.data) : super('Loaded data successfully: $data');
+
+  final String data;
+}
+
+class LoadFailureState extends ExampleState {
+  const LoadFailureState(this.exception)
+      : super(
+            'Loading failed because of an exception :( - The exception said "$exception"');
+
+  final Object exception;
+}
+
+class StaticSuccessWidget extends StatelessWidget {
+  const StaticSuccessWidget({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(Icons.check);
+  }
+}
+
+class AnimatedLoadingWidget extends StatelessWidget {
+  const AnimatedLoadingWidget({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const RepeatingRotationAnimation(
+        child: Icon(Icons.hourglass_bottom));
+  }
+}
+
+class AnimatedFailureWidget extends StatelessWidget {
+  const AnimatedFailureWidget({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const RepeatingRotationAnimation(child: Icon(Icons.error));
+  }
+}
+
+class RepeatingRotationAnimation extends StatefulWidget {
+  const RepeatingRotationAnimation({required this.child, Key? key})
+      : super(key: key);
+
+  final Widget child;
+
+  @override
+  State<RepeatingRotationAnimation> createState() =>
+      _RepeatingRotationAnimationState();
+}
+
+class _RepeatingRotationAnimationState extends State<RepeatingRotationAnimation>
+    with TickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    duration: const Duration(seconds: 2),
+    vsync: this,
+  )..repeat();
+  late final Animation<double> _animation = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.linear,
   );
 
-  static final _darkTheme = ThemeData(
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      foregroundColor: Colors.black,
-    ),
-    brightness: Brightness.dark,
-  );
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
-  /// Toggles the current brightness between light and dark.
-  void toggleTheme() {
-    emit(state.brightness == Brightness.dark ? _lightTheme : _darkTheme);
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _animation,
+      child: widget.child,
+    );
   }
 }
