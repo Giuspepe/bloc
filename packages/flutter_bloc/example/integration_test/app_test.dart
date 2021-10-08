@@ -31,7 +31,9 @@ void main() {
     setUpHotReload();
   });
 
-  testWidgets('Should fail but does not', (WidgetTester tester) async {
+  testWidgets(
+      'Should fail immediately when bloc throws exception, but times out after 10 minutes',
+      (WidgetTester tester) async {
     await tester.pumpWidget(App());
     await tester.pump();
     await tester.pump();
